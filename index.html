@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Assistant Maison · Claude Barrière</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      font-family: 'Inter', sans-serif;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 40px;
+      gap: 24px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @keyframes pulse1 {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    @keyframes timerPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,101,101,0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(245,101,101,0); }
+    }
+
+    /* HEADER */
+    #header { text-align: center; }
+    #header h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e2e8f0, #a0aec0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    #header p {
+      color: #4a5568;
+      font-size: 11px;
+      margin-top: 4px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ORB */
+    #orb-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    #orb-wrap {
+      position: relative;
+      width: 130px;
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(99,179,237,0.35);
+      display: none;
+    }
+    .ring:nth-child(1) { animation: pulse1 1.6s ease-out infinite; }
+    .ring:nth-child(2) { animation: pulse1 1.6s ease-out infinite 0.55s; }
+    #orb-wrap.active .ring { display: block; }
+
+    #orb {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #2d3748, #1a202c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+      transition: background 0.3s, box-shadow 0.3s;
+      user-select: none;
+    }
+    #orb-wrap.listening #orb {
+      background: radial-gradient(circle at 35% 35%, #63b3ed, #2b6cb0);
+      box-shadow: 0 0 32px rgba(99,179,237,0.5), 0 0 64px rgba(99,179,237,0.2);
+    }
+    #orb-wrap.thinking #orb {
+      background: radial-gradient(circle at 35% 35%, #f6ad55, #c05621);
+      box-shadow: 0 0 32px rgba(246,173,85,0.4);
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #718096;
+      transition: color 0.3s;
+    }
+    #status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #718096;
+      box-shadow: 0 0 6px #718096;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    /* MESSAGE BOX */
+    #message-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      animation: fadeIn 0.3s ease;
+    }
+    #message-box p { font-size: 15px; line-height: 1.65; color: #e2e8f0; }
+    #message-box small { display: block; color: #4a5568; font-size: 12px; margin-top: 8px; font-style: italic; }
+
+    /* YOUTUBE */
+    #youtube-container {
+      width: 100%;
+      max-width: 440px;
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+    #youtube-container.visible { display: block; }
+    #youtube-header {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(99,179,237,0.2);
+      border-bottom: none;
+      border-radius: 14px 14px 0 0;
+      padding: 9px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #youtube-header span { color: #a0aec0; font-size: 13px; }
+    #youtube-close {
+      background: none;
+      border: none;
+      color: #718096;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    #youtube-frame-wrap {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      border-radius: 0 0 14px 14px;
+      overflow: hidden;
+      border: 1px solid rgba(99,179,237,0.2);
+      border-top: none;
+    }
+    #youtube-frame-wrap iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    /* TIMERS */
+    #timers-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .timer-card {
+      background: rgba(99,179,237,0.07);
+      border: 1px solid rgba(99,179,237,0.2);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+    .timer-card.done {
+      background: rgba(245,101,101,0.12);
+      border-color: rgba(245,101,101,0.35);
+      animation: timerPulse 1s ease-in-out infinite;
+    }
+    .timer-icon { font-size: 20px; }
+    .timer-info { flex: 1; }
+    .timer-remaining {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 5px;
+    }
+    .timer-card.done .timer-remaining { color: #fc8181; }
+    .timer-bar-bg {
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .timer-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #63b3ed, #4299e1);
+      border-radius: 2px;
+      transition: width 0.8s linear;
+    }
+    .timer-card.done .timer-bar { background: #fc8181; }
+    .timer-total { color: #718096; font-size: 11px; margin-top: 4px; }
+    .timer-delete {
+      background: none;
+      border: none;
+      color: #718096;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* QUICK COMMANDS */
+    #quick-commands { width: 100%; max-width: 440px; }
+    #quick-label {
+      color: #4a5568;
+      font-size: 11px;
+      text-align: center;
+      margin-bottom: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    #quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .quick-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 11px;
+      padding: 11px 13px;
+      color: #a0aec0;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s, border-color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .quick-btn:active {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(99,179,237,0.3);
+    }
+
+    /* FOOTER */
+    #footer {
+      color: #2d3748;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    /* MIC BUTTON */
+    #mic-tap-btn {
+      background: rgba(99,179,237,0.1);
+      border: 1px solid rgba(99,179,237,0.3);
+      border-radius: 50px;
+      padding: 10px 22px;
+      color: #63b3ed;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s;
+    }
+    #mic-tap-btn:active { background: rgba(99,179,237,0.2); }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <h1>Assistant Maison</h1>
+    <p>Claude · Barrière</p>
+  </div>
+
+  <div id="orb-container">
+    <div id="orb-wrap" onclick="orbTapped()">
+      <div class="ring"></div>
+      <div class="ring"></div>
+      <div id="orb">🏠</div>
+    </div>
+    <div id="status">
+      <div id="status-dot"></div>
+      <span id="status-text">En écoute passive</span>
+    </div>
+  </div>
+
+  <div id="message-box">
+    <p id="main-message">Dis « Hey Claude » pour commencer…</p>
+    <small id="transcript-text"></small>
+  </div>
+
+  <button id="mic-tap-btn" onclick="startListeningForCommand()">
+    🎙️ Appuyer pour parler
+  </button>
+
+  <div id="youtube-container">
+    <div id="youtube-header">
+      <span>▶ YouTube</span>
+      <button id="youtube-close" onclick="closeYoutube()">✕</button>
+    </div>
+    <div id="youtube-frame-wrap">
+      <iframe id="youtube-frame"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+
+  <div id="timers-container"></div>
+
+  <div id="quick-commands">
+    <p id="quick-label">Exemples de commandes</p>
+    <div id="quick-grid">
+      <button class="quick-btn" onclick="sendCommand('joue du drake')">🎵 Joue du Drake</button>
+      <button class="quick-btn" onclick="sendCommand('minuterie 10 minutes')">⏱️ Minuterie 10 min</button>
+      <button class="quick-btn" onclick="sendCommand('bande annonce pokemon légendes za')">🎬 Pokémon Légendes ZA</button>
+      <button class="quick-btn" onclick="sendCommand('météo à brossard')">🌤️ Météo à Brossard</button>
+    </div>
+  </div>
+
+  <p id="footer">Dis « Hey Claude » ou appuie sur le bouton</p>
+
+<script>
+  const SYSTEM_PROMPT = `Tu es un assistant maison vocal francophone, style Google Home. Tu réponds TOUJOURS en français, de façon courte et naturelle (1-2 phrases max sauf si on te pose une question complexe).
+
+Tu peux gérer :
+- Musique/vidéo YouTube : extrais l'intention et retourne une query YouTube
+- Minuteries : extrais la durée en secondes
+- Questions générales : réponds directement
+
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
+
+Pour la musique :
+{"type":"music","query":"drake god's plan","message":"Je lance Drake pour toi."}
+
+Pour une vidéo :
+{"type":"video","query":"bande annonce minecraft film","message":"J'ouvre la vidéo pour toi."}
+
+Pour une minuterie :
+{"type":"timer","seconds":600,"message":"Minuterie de 10 minutes lancée."}
+
+Pour une question générale :
+{"type":"answer","message":"Ta réponse courte ici."}
+
+Pour arrêter la musique :
+{"type":"stop_music","message":"Musique arrêtée."}
+
+Sois chaleureux, naturel, comme un vrai assistant maison.`;
+
+  let recognition = null;
+  let isCommandMode = false;
+  let timers = [];
+  let timerInterval = null;
+  const synth = window.speechSynthesis;
+
+  // ── STATUS ──────────────────────────────────────────────
+  const statusColors = {
+    idle:      { dot: '#718096', text: 'En écoute passive' },
+    listening: { dot: '#63b3ed', text: 'Je t\'écoute…' },
+    thinking:  { dot: '#f6ad55', text: 'Je réfléchis…' },
+    speaking:  { dot: '#68d391', text: 'Je parle…' },
+  };
+
+  function setStatus(s) {
+    const c = statusColors[s] || statusColors.idle;
+    document.getElementById('status-dot').style.background = c.dot;
+    document.getElementById('status-dot').style.boxShadow = `0 0 8px ${c.dot}`;
+    document.getElementById('status-text').textContent = c.text;
+    document.getElementById('status-text').style.color = c.dot;
+    const wrap = document.getElementById('orb-wrap');
+    wrap.className = '';
+    if (s !== 'idle') wrap.classList.add('active');
+    if (s === 'listening') wrap.classList.add('listening');
+    if (s === 'thinking') wrap.classList.add('thinking');
+    const orb = document.getElementById('orb');
+    orb.textContent = s === 'listening' ? '🎙️' : s === 'thinking' ? '🤔' : '🏠';
+  }
+
+  function setMessage(msg, transcript) {
+    document.getElementById('main-message').textContent = msg;
+    document.getElementById('transcript-text').textContent = transcript ? `« ${transcript} »` : '';
+  }
+
+  // ── SPEECH SYNTHESIS ────────────────────────────────────
+  function speak(text, callback) {
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    utter.rate = 1.05;
+    utter.pitch = 1.0;
+    const voices = synth.getVoices();
+    const frVoice = voices.find(v => v.lang.startsWith('fr') && /female|femme/i.test(v.name))
+                 || voices.find(v => v.lang.startsWith('fr'));
+    if (frVoice) utter.voice = frVoice;
+    setStatus('speaking');
+    utter.onend = () => { setStatus('idle'); if (callback) callback(); };
+    utter.onerror = () => { setStatus('idle'); if (callback) callback(); };
+    synth.speak(utter);
+  }
+
+  // ── SPEECH RECOGNITION ──────────────────────────────────
+  function initRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setMessage("La reconnaissance vocale n'est pas disponible sur ce navigateur.");
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (e) => {
+      const result = e.results[0][0].transcript.toLowerCase().trim();
+
+      if (!isCommandMode) {
+        if (result.includes('hey claude') || result.includes('hé claude') || result.includes('ok claude')) {
+          speak('Oui ?', () => startListeningForCommand());
+        } else {
+          restartPassive();
+        }
+      } else {
+        isCommandMode = false;
+        sendCommand(result);
+      }
+    };
+
+    recognition.onend = () => {
+      if (!isCommandMode) restartPassive();
+    };
+
+    recognition.onerror = (e) => {
+      isCommandMode = false;
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        setMessage(`Erreur micro : ${e.error}. Utilise le bouton ci-dessous.`);
+      }
+      if (e.error !== 'not-allowed') setTimeout(restartPassive, 800);
+    };
+
+    startPassive();
+  }
+
+  function startPassive() {
+    setStatus('idle');
+    try { recognition.start(); } catch(e) {}
+  }
+
+  function restartPassive() {
+    setTimeout(() => {
+      try { recognition.start(); } catch(e) {}
+    }, 600);
+  }
+
+  function startListeningForCommand() {
+    if (!recognition) { initRecognition(); return; }
+    isCommandMode = true;
+    setStatus('listening');
+    setMessage('Je t\'écoute…');
+    try { recognition.stop(); } catch(e) {}
+    setTimeout(() => {
+      try { recognition.start(); } catch(e) {}
+    }, 400);
+  }
+
+  function orbTapped() { startListeningForCommand(); }
+
+  // ── CLAUDE API ───────────────────────────────────────────
+  async function sendCommand(command) {
+    setStatus('thinking');
+    setMessage('Je réfléchis…', command);
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: command }]
+        })
+      });
+
+      const data = await res.json();
+      const raw = (data.content || []).map(b => b.text || '').join('');
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      } catch {
+        parsed = { type: 'answer', message: raw };
+      }
+
+      setMessage(parsed.message, command);
+
+      if (parsed.type === 'music' || parsed.type === 'video') {
+        loadYoutube(parsed.query || command);
+        speak(parsed.message);
+      } else if (parsed.type === 'timer') {
+        addTimer(parsed.seconds, parsed.message);
+        speak(parsed.message);
+        setTimeout(() => speak('Ta minuterie est terminée !'), parsed.seconds * 1000);
+      } else if (parsed.type === 'stop_music') {
+        closeYoutube();
+        speak(parsed.message);
+      } else {
+        speak(parsed.message);
+      }
+
+    } catch(err) {
+      setMessage('Désolé, une erreur est survenue.');
+      speak('Désolé, je n\'ai pas pu traiter ta demande.');
+      setStatus('idle');
+    }
+  }
+
+  // ── YOUTUBE ──────────────────────────────────────────────
+  function loadYoutube(query) {
+    const encoded = encodeURIComponent(query);
+    const src = `https://www.youtube.com/embed/videoseries?listType=search&list=${encoded}&autoplay=1&rel=0`;
+    document.getElementById('youtube-frame').src = src;
+    document.getElementById('youtube-container').classList.add('visible');
+  }
+
+  function closeYoutube() {
+    document.getElementById('youtube-frame').src = '';
+    document.getElementById('youtube-container').classList.remove('visible');
+  }
+
+  // ── TIMERS ───────────────────────────────────────────────
+  function formatTime(s) {
+    const m = Math.floor(s / 60), sec = s % 60;
+    if (m === 0) return `${sec}s`;
+    if (sec === 0) return `${m} min`;
+    return `${m} min ${sec}s`;
+  }
+
+  function addTimer(seconds, label) {
+    const id = Date.now();
+    timers.push({ id, seconds, startedAt: Date.now(), label });
+    renderTimers();
+    if (!timerInterval) timerInterval = setInterval(renderTimers, 1000);
+  }
+
+  function removeTimer(id) {
+    timers = timers.filter(t => t.id !== id);
+    renderTimers();
+    if (timers.length === 0 && timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function renderTimers() {
+    const container = document.getElementById('timers-container');
+    if (timers.length === 0) { container.innerHTML = ''; return; }
+
+    container.innerHTML = timers.map(t => {
+      const elapsed = Math.floor((Date.now() - t.startedAt) / 1000);
+      const remaining = Math.max(0, t.seconds - elapsed);
+      const progress = Math.min(100, (elapsed / t.seconds) * 100);
+      const done = remaining === 0;
+      return `
+        <div class="timer-card${done ? ' done' : ''}">
+          <span class="timer-icon">${done ? '⏰' : '⏱️'}</span>
+          <div class="timer-info">
+            <div class="timer-remaining">${done ? 'Minuterie terminée !' : formatTime(remaining)}</div>
+            <div class="timer-bar-bg"><div class="timer-bar" style="width:${progress}%"></div></div>
+            <div class="timer-total">${formatTime(t.seconds)}</div>
+          </div>
+          <button class="timer-delete" onclick="removeTimer(${t.id})">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  // ── INIT ─────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    // Précharger les voix
+    synth.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => synth.getVoices();
+    // Démarrer la reconnaissance
+    initRecognition();
+  });
+</script>
+</body>
+</html>
